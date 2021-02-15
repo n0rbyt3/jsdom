@@ -1,10 +1,11 @@
 "use strict";
 /* eslint-disable no-console, global-require */
 const dns = require("dns");
+const fetch = require("node-fetch");
+const https = require("https");
 const path = require("path");
 const util = require("util");
 const childProcess = require("child_process");
-const requestHead = require("request-promise-native").head;
 const { inBrowserContext } = require("../util.js");
 
 const dnsLookup = util.promisify(dns.lookup);
@@ -66,8 +67,15 @@ module.exports = ({ toUpstream = false } = {}) => {
 };
 
 function pollForServer(url) {
-  return requestHead(url, { strictSSL: false })
-    .then(() => {
+  const options = {
+    method: "HEAD",
+    agent: url.startsWith("https:") ? new https.Agent({ rejectUnauthorized: false }) : null
+  };
+  return fetch(url, options)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Unexpected status=${response.status}`);
+      }
       console.log(`WPT server at ${url} is up!`);
       return url;
     })
